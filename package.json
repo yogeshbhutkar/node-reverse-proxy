@@ -1,19 +1,36 @@
 {
-  "name": "node-reverse-proxy",
-  "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
-  "scripts": {
-    "start": "node dist/index",
-    "build": "tsc -p .",
-    "dev": "tsc-watch --onSuccess \"npm start\""
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "devDependencies": {
-    "@types/node": "^22.13.10",
-    "tsc-watch": "^6.2.1",
-    "typescript": "^5.8.2"
-  }
+    "name": "node-reverse-proxy",
+    "version": "1.0.0",
+    "description": "",
+    "main": "index.js",
+    "scripts": {
+        "start": "node dist/index",
+        "build": "tsc -p .",
+        "dev": "tsc-watch --onSuccess \"npm start\"",
+        "lint": "eslint .",
+        "lint:fix": "eslint . --fix",
+        "prettier": "prettier --ignore-path .gitignore --write \"./src/**/*.+(js|ts|json)\"",
+        "prettier:fix": "prettier --write src"
+    },
+    "keywords": [],
+    "author": "",
+    "license": "ISC",
+    "devDependencies": {
+        "@eslint/js": "^9.22.0",
+        "@types/node": "^22.13.10",
+        "@typescript-eslint/eslint-plugin": "^8.26.1",
+        "@typescript-eslint/parser": "^8.26.1",
+        "eslint": "^9.22.0",
+        "eslint-config-prettier": "^10.1.1",
+        "eslint-plugin-prettier": "^5.2.3",
+        "globals": "^16.0.0",
+        "prettier": "^3.5.3",
+        "tsc-watch": "^6.2.1",
+        "typescript": "^5.8.2",
+        "typescript-eslint": "^8.26.1"
+    },
+    "dependencies": {
+        "yaml": "^2.7.0",
+        "zod": "^3.24.2"
+    }
 }
