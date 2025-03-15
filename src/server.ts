@@ -1,7 +1,11 @@
 import cluster, { Worker } from 'node:cluster';
 import http from 'node:http';
 import { ConfigSchemaType, rootConfigSchema } from './config-schema';
-import { WorkerMessageType, workerRootSchema } from './worker-schema';
+import {
+	WorkerMessageType,
+	WorkerResponseMessageType,
+	workerRootSchema,
+} from './worker-schema';
 
 interface CreateServerConfig {
 	port: number;
@@ -52,9 +56,63 @@ export async function createServer(config: CreateServerConfig) {
 			JSON.parse(process.env.config as string),
 		);
 
-		process.on('message', async (message) => {
+		process.on('message', async (message: string) => {
 			const validatedMessage = await workerRootSchema.parseAsync(
-				JSON.parse(message as string),
+				JSON.parse(message),
+			);
+
+			const requestUrl = validatedMessage.url;
+
+			// Find the rule that matches the request URL.
+			const rule = workerConfig.server.rules.find(
+				(rule) => rule.path === requestUrl,
+			);
+
+			if (!rule) {
+				const reply: WorkerResponseMessageType = {
+					error: 'Rule not found!',
+					errorCode: '404',
+				};
+				return process.send?.(JSON.stringify(reply));
+			}
+
+			// Randomly select an upstream to proxy the request to.
+			const upstreamId = rule.upstreams.at(
+				Math.floor(Math.random() * rule.upstreams.length),
+			);
+
+			if (!upstreamId) {
+				const reply: WorkerResponseMessageType = {
+					error: 'Upstream not found!',
+					errorCode: '500',
+				};
+				return process.send?.(JSON.stringify(reply));
+			}
+
+			// Find the corresponding upstream configuration.
+			const upstream = workerConfig.server.upstreams.find(
+				(upstream) => upstream.id === upstreamId,
+			);
+
+			// Reverse proxy the request to the upstream.
+			http.request(
+				{ host: upstream?.url, path: requestUrl },
+				(proxyResponse) => {
+					let data = '';
+
+					proxyResponse.on('data', (chunk) => {
+						data += chunk;
+					});
+
+					proxyResponse.on('end', () => {
+						const reply: WorkerResponseMessageType = {
+							data,
+						};
+
+						// Send the response back to the master process.
+						process.send?.(JSON.stringify(reply));
+					});
+				},
 			);
 		});
 	}
