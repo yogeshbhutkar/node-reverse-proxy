@@ -1,0 +1,12 @@
+server:
+  listen: 8080
+  workers: 4
+
+  upstreams:
+    - id: node1
+      url: jsonplaceholder.typicode.com
+
+  rules:
+    - path: /
+      upstreams:
+        - node1

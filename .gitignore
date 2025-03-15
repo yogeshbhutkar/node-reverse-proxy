@@ -3,6 +3,3 @@ node_modules
 
 # Ignore build files.
 dist
-
-# Ignore config for testing.
-config.yaml
