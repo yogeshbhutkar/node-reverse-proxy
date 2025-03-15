@@ -4,6 +4,7 @@ import { ConfigSchemaType, rootConfigSchema } from './config-schema';
 import {
 	WorkerMessageType,
 	WorkerResponseMessageType,
+	workerResponseSchema,
 	workerRootSchema,
 } from './worker-schema';
 
@@ -43,6 +44,22 @@ export async function createServer(config: CreateServerConfig) {
 			};
 
 			worker.send(JSON.stringify(payload));
+
+			worker.on('message', async (message) => {
+				const validatedMessage = await workerResponseSchema.parseAsync(
+					JSON.parse(message),
+				);
+
+				if (validatedMessage.errorCode) {
+					res.writeHead(parseInt(validatedMessage.errorCode));
+					res.end(validatedMessage.error);
+					return;
+				}
+
+				res.writeHead(200);
+				res.end(validatedMessage.data);
+				return;
+			});
 		});
 
 		server.listen(port, () => {
@@ -64,9 +81,10 @@ export async function createServer(config: CreateServerConfig) {
 			const requestUrl = validatedMessage.url;
 
 			// Find the rule that matches the request URL.
-			const rule = workerConfig.server.rules.find(
-				(rule) => rule.path === requestUrl,
-			);
+			const rule = workerConfig.server.rules.find((rule) => {
+				const regex = new RegExp(`^${rule.path}.*$`);
+				return regex.test(requestUrl);
+			});
 
 			if (!rule) {
 				const reply: WorkerResponseMessageType = {
@@ -95,7 +113,7 @@ export async function createServer(config: CreateServerConfig) {
 			);
 
 			// Reverse proxy the request to the upstream.
-			http.request(
+			const request = http.request(
 				{ host: upstream?.url, path: requestUrl },
 				(proxyResponse) => {
 					let data = '';
@@ -114,6 +132,8 @@ export async function createServer(config: CreateServerConfig) {
 					});
 				},
 			);
+
+			request.end();
 		});
 	}
 }
