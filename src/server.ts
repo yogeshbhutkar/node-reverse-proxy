@@ -7,6 +7,7 @@ import {
 	workerResponseSchema,
 	workerRootSchema,
 } from './worker-schema';
+import { parseHostAndPort } from './lib/helper';
 
 interface CreateServerConfig {
 	port: number;
@@ -50,13 +51,13 @@ export async function createServer(config: CreateServerConfig) {
 					JSON.parse(message),
 				);
 
-				if (validatedMessage.errorCode) {
-					res.writeHead(parseInt(validatedMessage.errorCode));
+				if (validatedMessage.error) {
+					res.writeHead(validatedMessage.statusCode || 500);
 					res.end(validatedMessage.error);
 					return;
 				}
 
-				res.writeHead(200);
+				res.writeHead(validatedMessage.statusCode || 200);
 				res.end(validatedMessage.data);
 				return;
 			});
@@ -89,7 +90,7 @@ export async function createServer(config: CreateServerConfig) {
 			if (!rule) {
 				const reply: WorkerResponseMessageType = {
 					error: 'Rule not found!',
-					errorCode: '404',
+					statusCode: 404,
 				};
 				return process.send?.(JSON.stringify(reply));
 			}
@@ -102,7 +103,7 @@ export async function createServer(config: CreateServerConfig) {
 			if (!upstreamId) {
 				const reply: WorkerResponseMessageType = {
 					error: 'Upstream not found!',
-					errorCode: '500',
+					statusCode: 500,
 				};
 				return process.send?.(JSON.stringify(reply));
 			}
@@ -112,9 +113,16 @@ export async function createServer(config: CreateServerConfig) {
 				(upstream) => upstream.id === upstreamId,
 			);
 
+			const { host, port } = parseHostAndPort(upstream?.url || '');
+
 			// Reverse proxy the request to the upstream.
 			const request = http.request(
-				{ host: upstream?.url, path: requestUrl },
+				{
+					host,
+					port,
+					path: requestUrl,
+					method: 'GET',
+				},
 				(proxyResponse) => {
 					let data = '';
 
@@ -125,6 +133,7 @@ export async function createServer(config: CreateServerConfig) {
 					proxyResponse.on('end', () => {
 						const reply: WorkerResponseMessageType = {
 							data,
+							statusCode: proxyResponse.statusCode,
 						};
 
 						// Send the response back to the master process.
