@@ -1,6 +1,10 @@
 # Node.js Reverse Proxy Prototype
 
+![Demo](assets/video.gif)
+
 This project is a Node.js reverse proxy server that forwards HTTP requests to upstream servers based on configurable rules. It supports multiple workers for handling concurrent requests and can follow redirects.
+
+This project's system design is inspired from NGINX's design.
 
 ## Features
 
